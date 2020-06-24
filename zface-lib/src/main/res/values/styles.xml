@@ -1,0 +1,55 @@
+<resources>
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat"></style>
+
+    <style name="AppTheme.InfoLabel" parent="TextAppearance.AppCompat">
+        <item name="android:textColor">@color/info_text_label</item>
+        <item name="android:textSize">5dp</item>
+    </style>
+
+    <style name="AppTheme.InfoContent" parent="TextAppearance.AppCompat">
+        <item name="android:textColor">@color/info_text_content</item>
+        <item name="android:textSize">7dp</item>
+    </style>
+
+    <style name="AppTheme.TipContent" parent="TextAppearance.AppCompat">
+        <item name="android:textColor">@color/tip_color</item>
+        <item name="android:textSize">70sp</item>
+    </style>
+
+    <style name="AppTheme.SettingLabel" parent="TextAppearance.AppCompat">
+        <item name="android:textColor">@color/tip_color</item>
+        <item name="android:textSize">20dp</item>
+    </style>
+
+    <style name="AppTheme.SettingValue" parent="TextAppearance.AppCompat">
+        <item name="android:textColor">@color/black</item>
+        <item name="android:textSize">18dp</item>
+    </style>
+
+    <style name="mypopwindow_anim_style">
+        <item name="android:windowEnterAnimation">@anim/popshow_anim</item>
+        <!-- 指定显示的动画xml -->
+        <item name="android:windowExitAnimation">@anim/pophidden_anim</item>
+        <!-- 指定消失的动画xml -->
+    </style>
+
+    <style name="Permission" />
+
+    <style name="Permission.Theme" />
+
+    <style name="Permission.Theme.Activity">
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
+    <style name="Permission.Theme.Activity.Transparent">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+</resources>

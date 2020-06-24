@@ -1,0 +1,3 @@
+rootProject.name='ZFace'
+include ':app'
+include ':zface-lib'
