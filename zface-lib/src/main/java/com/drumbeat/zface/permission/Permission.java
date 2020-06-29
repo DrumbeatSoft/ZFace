@@ -144,7 +144,10 @@ public class Permission implements PermissionOption, Messenger.Callback {
     public void onCallback() {
         // 检查权限获取情况
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            if (mGranted != null) mGranted.onAction(null);
+            if (mGranted != null) {
+                mMessenger.unRegister();
+                mGranted.onAction(null);
+            }
         } else {
             PackageManager packageManager = target.getContext().getPackageManager();
             List<String> deniedPermissionList = new ArrayList<>();
@@ -154,12 +157,17 @@ public class Permission implements PermissionOption, Messenger.Callback {
                 }
             }
             if (deniedPermissionList.size() > 0) {
-                if (mDenied != null) mDenied.onAction(deniedPermissionList);
+                if (mDenied != null) {
+                    mMessenger.unRegister();
+                    mDenied.onAction(deniedPermissionList);
+                }
             } else {
-                if (mGranted != null) mGranted.onAction(null);
+                if (mGranted != null) {
+                    mMessenger.unRegister();
+                    mGranted.onAction(null);
+                }
             }
         }
-        mMessenger.unRegister();
     }
 
     private static class InstanceHelper {

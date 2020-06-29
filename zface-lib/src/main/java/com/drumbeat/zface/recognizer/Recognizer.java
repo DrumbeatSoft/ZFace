@@ -217,6 +217,7 @@ public class Recognizer implements RecognizerOption {
             } else {
                 // 有so文件未拷贝成功
                 initListener.onFailure(ErrorCode.ERROR_LOAD_RESOURCE_FAIL, null);
+                Logger.i("error_load_resource_fail.");
             }
         } catch (Exception e) {
             e.printStackTrace();

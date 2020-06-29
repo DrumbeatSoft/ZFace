@@ -43,7 +43,7 @@ public class VideoActivity extends Activity {
     // 宽度适配
     private ImageView ivBlueBorderTop, ivBlueBorderBottom;
 
-    //500毫秒检测一次
+    //200毫秒检测一次
     private boolean isDetecting = true;
 
     @Override
@@ -87,14 +87,14 @@ public class VideoActivity extends Activity {
         decorView.setSystemUiVisibility(uiOptions);
 
         mCameraPreview.setCameraCallbacks(mCameraCallbacks);
-        // 500毫秒检测1次
+        // 200毫秒检测1次
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
                 isDetecting = false;
             }
-        }, 1000, 500);
+        }, 1000, 200);
     }
 
     /**
