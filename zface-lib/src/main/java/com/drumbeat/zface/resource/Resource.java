@@ -2,7 +2,6 @@ package com.drumbeat.zface.resource;
 
 import com.drumbeat.zface.ZFace;
 import com.drumbeat.zface.constant.ErrorCode;
-import com.drumbeat.zface.listener.Action;
 import com.drumbeat.zface.listener.DownloadListener;
 import com.drumbeat.zface.listener.QueryListener;
 import com.drumbeat.zface.permission.Permission;
@@ -30,12 +29,12 @@ public class Resource implements ResourceOption {
                 .permission()
                 .permission(Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE)
                 .onGranted(permissions -> ResourceUtil.getNeedDownloadResUrlList(needDownloadResUrlList -> {
-                    resUrlList.clear();
-                    resUrlList.addAll(needDownloadResUrlList);
-                    if (resUrlList.size() > 0) {
-                        queryListener.onSuccess(true);
-                    } else {
+                    if (needDownloadResUrlList == null || needDownloadResUrlList.size() == 0) {
                         queryListener.onSuccess(false);
+                    } else {
+                        resUrlList.clear();
+                        resUrlList.addAll(needDownloadResUrlList);
+                        queryListener.onSuccess(true);
                     }
                 }))
                 .start();

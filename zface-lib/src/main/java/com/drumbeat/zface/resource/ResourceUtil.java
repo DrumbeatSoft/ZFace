@@ -2,18 +2,24 @@ package com.drumbeat.zface.resource;
 
 import android.app.Activity;
 import android.content.Context;
+import android.os.Bundle;
+import android.os.Message;
 import android.text.TextUtils;
 
 import com.drumbeat.zface.ZFace;
 import com.drumbeat.zface.util.FileUtils;
 import com.drumbeat.zface.util.PathUtils;
+import com.drumbeat.zface.util.WeakHandler;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 /**
  * 资源文件工具类
@@ -53,15 +59,8 @@ public class ResourceUtil {
     public final static String SO_FILENAME_libTenniS = "lib" + SO_libTenniS + ".so";
     public final static String SO_FILENAME_libopencv_java3 = "lib" + SO_libopencv_java3 + ".so";
 
-    /**
-     * 模型文件在文件服务器所处位置的前置路径
-     */
-//    private final static String RESOURCE_MODEL_DOWNLOAD_BASE_URL = "https://drumbeat-update-app.oss-cn-hangzhou.aliyuncs.com/face/model/";
-
-    /**
-     * so文件在文件服务器所处位置的前置路径
-     */
-//    private final static String RESOURCE_SO_DOWNLOAD_BASE_URL = "https://drumbeat-update-app.oss-cn-hangzhou.aliyuncs.com/face/so/";
+    private static TimerTask mTimerTask;
+    private static Timer mTimer;
 
     /**
      * 获取 so 文件在应用下 jniLibs 的存储路径
@@ -135,7 +134,6 @@ public class ResourceUtil {
             e.printStackTrace();
         }
         listener.onGetResLength(resLength[0]);
-
     }
 
     /**
@@ -152,11 +150,14 @@ public class ResourceUtil {
         void onGetNeedDownloadResUrlList(List<String> needDownloadResUrlList);
     }
 
+    private static GetNeedDownloadResUrlListListener needDownloadResUrlListListener;
+    private static StringBuffer needDownloadResUrls = null;
+
     /**
      * 获取需要下载的资源的url集合
      */
     static void getNeedDownloadResUrlList(GetNeedDownloadResUrlListListener needDownloadResUrlListListener) {
-        List<String> needDownloadResUrlList = new ArrayList<>();
+        ResourceUtil.needDownloadResUrlListListener = needDownloadResUrlListListener;
         Thread thread = new Thread(() -> {
             String RESOURCE_MODEL_DOWNLOAD_BASE_URL = ZFace.getConfig().getResource_model_download_base_url();
             String RESOURCE_SO_DOWNLOAD_BASE_URL = ZFace.getConfig().getResource_so_download_base_url();
@@ -176,64 +177,96 @@ public class ResourceUtil {
              * model
              */
             if (isNeedDownload(RESOURCE_MODEL_DOWNLOAD_BASE_URL, MODEL_FACE_DATECTOR)) {
-                needDownloadResUrlList.add(RESOURCE_MODEL_DOWNLOAD_BASE_URL + MODEL_FACE_DATECTOR);
+                needDownloadResUrls = TextUtils.isEmpty(needDownloadResUrls) ?
+                        new StringBuffer(RESOURCE_MODEL_DOWNLOAD_BASE_URL + MODEL_FACE_DATECTOR) :
+                        needDownloadResUrls.append(",").append(RESOURCE_MODEL_DOWNLOAD_BASE_URL).append(MODEL_FACE_DATECTOR);
             }
             if (isNeedDownload(RESOURCE_MODEL_DOWNLOAD_BASE_URL, MODEL_FACE_LANDMARKER_PTS5)) {
-                needDownloadResUrlList.add(RESOURCE_MODEL_DOWNLOAD_BASE_URL + MODEL_FACE_LANDMARKER_PTS5);
+                needDownloadResUrls = TextUtils.isEmpty(needDownloadResUrls) ?
+                        new StringBuffer(RESOURCE_MODEL_DOWNLOAD_BASE_URL + MODEL_FACE_LANDMARKER_PTS5) :
+                        needDownloadResUrls.append(",").append(RESOURCE_MODEL_DOWNLOAD_BASE_URL).append(MODEL_FACE_LANDMARKER_PTS5);
             }
             if (isNeedDownload(RESOURCE_MODEL_DOWNLOAD_BASE_URL, MODEL_FACE_RECOGNIZER)) {
-                needDownloadResUrlList.add(RESOURCE_MODEL_DOWNLOAD_BASE_URL + MODEL_FACE_RECOGNIZER);
+                needDownloadResUrls = TextUtils.isEmpty(needDownloadResUrls) ?
+                        new StringBuffer(RESOURCE_MODEL_DOWNLOAD_BASE_URL + MODEL_FACE_RECOGNIZER) :
+                        needDownloadResUrls.append(",").append(RESOURCE_MODEL_DOWNLOAD_BASE_URL).append(MODEL_FACE_RECOGNIZER);
             }
             if (isNeedDownload(RESOURCE_MODEL_DOWNLOAD_BASE_URL, MODEL_FAS_FIRST)) {
-                needDownloadResUrlList.add(RESOURCE_MODEL_DOWNLOAD_BASE_URL + MODEL_FAS_FIRST);
+                needDownloadResUrls = TextUtils.isEmpty(needDownloadResUrls) ?
+                        new StringBuffer(RESOURCE_MODEL_DOWNLOAD_BASE_URL + MODEL_FAS_FIRST) :
+                        needDownloadResUrls.append(",").append(RESOURCE_MODEL_DOWNLOAD_BASE_URL).append(MODEL_FAS_FIRST);
             }
             if (isNeedDownload(RESOURCE_MODEL_DOWNLOAD_BASE_URL, MODEL_FAS_SECOND)) {
-                needDownloadResUrlList.add(RESOURCE_MODEL_DOWNLOAD_BASE_URL + MODEL_FAS_SECOND);
+                needDownloadResUrls = TextUtils.isEmpty(needDownloadResUrls) ?
+                        new StringBuffer(RESOURCE_MODEL_DOWNLOAD_BASE_URL + MODEL_FAS_SECOND) :
+                        needDownloadResUrls.append(",").append(RESOURCE_MODEL_DOWNLOAD_BASE_URL).append(MODEL_FAS_SECOND);
             }
             /*
              * so
              */
             if (isNeedDownload(RESOURCE_SO_DOWNLOAD_BASE_URL, SO_FILENAME_libSeetaAuthorize)) {
-                needDownloadResUrlList.add(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libSeetaAuthorize);
+                needDownloadResUrls = TextUtils.isEmpty(needDownloadResUrls) ?
+                        new StringBuffer(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libSeetaAuthorize) :
+                        needDownloadResUrls.append(",").append(RESOURCE_SO_DOWNLOAD_BASE_URL).append(SO_FILENAME_libSeetaAuthorize);
             }
             if (isNeedDownload(RESOURCE_SO_DOWNLOAD_BASE_URL, SO_FILENAME_libSeetaFaceAntiSpoofingX600)) {
-                needDownloadResUrlList.add(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libSeetaFaceAntiSpoofingX600);
+                needDownloadResUrls = TextUtils.isEmpty(needDownloadResUrls) ?
+                        new StringBuffer(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libSeetaFaceAntiSpoofingX600) :
+                        needDownloadResUrls.append(",").append(RESOURCE_SO_DOWNLOAD_BASE_URL).append(SO_FILENAME_libSeetaFaceAntiSpoofingX600);
             }
             if (isNeedDownload(RESOURCE_SO_DOWNLOAD_BASE_URL, SO_FILENAME_libSeetaFaceAntiSpoofingX600_java)) {
-                needDownloadResUrlList.add(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libSeetaFaceAntiSpoofingX600_java);
+                needDownloadResUrls = TextUtils.isEmpty(needDownloadResUrls) ?
+                        new StringBuffer(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libSeetaFaceAntiSpoofingX600_java) :
+                        needDownloadResUrls.append(",").append(RESOURCE_SO_DOWNLOAD_BASE_URL).append(SO_FILENAME_libSeetaFaceAntiSpoofingX600_java);
             }
             if (isNeedDownload(RESOURCE_SO_DOWNLOAD_BASE_URL, SO_FILENAME_libSeetaFaceDetector600)) {
-                needDownloadResUrlList.add(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libSeetaFaceDetector600);
+                needDownloadResUrls = TextUtils.isEmpty(needDownloadResUrls) ?
+                        new StringBuffer(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libSeetaFaceDetector600) :
+                        needDownloadResUrls.append(",").append(RESOURCE_SO_DOWNLOAD_BASE_URL).append(SO_FILENAME_libSeetaFaceDetector600);
             }
             if (isNeedDownload(RESOURCE_SO_DOWNLOAD_BASE_URL, SO_FILENAME_libSeetaFaceDetector600_java)) {
-                needDownloadResUrlList.add(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libSeetaFaceDetector600_java);
+                needDownloadResUrls = TextUtils.isEmpty(needDownloadResUrls) ?
+                        new StringBuffer(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libSeetaFaceDetector600_java) :
+                        needDownloadResUrls.append(",").append(RESOURCE_SO_DOWNLOAD_BASE_URL).append(SO_FILENAME_libSeetaFaceDetector600_java);
             }
             if (isNeedDownload(RESOURCE_SO_DOWNLOAD_BASE_URL, SO_FILENAME_libSeetaFaceLandmarker600)) {
-                needDownloadResUrlList.add(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libSeetaFaceLandmarker600);
+                needDownloadResUrls = TextUtils.isEmpty(needDownloadResUrls) ?
+                        new StringBuffer(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libSeetaFaceLandmarker600) :
+                        needDownloadResUrls.append(",").append(RESOURCE_SO_DOWNLOAD_BASE_URL).append(SO_FILENAME_libSeetaFaceLandmarker600);
             }
             if (isNeedDownload(RESOURCE_SO_DOWNLOAD_BASE_URL, SO_FILENAME_libSeetaFaceLandmarker600_java)) {
-                needDownloadResUrlList.add(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libSeetaFaceLandmarker600_java);
+                needDownloadResUrls = TextUtils.isEmpty(needDownloadResUrls) ?
+                        new StringBuffer(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libSeetaFaceLandmarker600_java) :
+                        needDownloadResUrls.append(",").append(RESOURCE_SO_DOWNLOAD_BASE_URL).append(SO_FILENAME_libSeetaFaceLandmarker600_java);
             }
             if (isNeedDownload(RESOURCE_SO_DOWNLOAD_BASE_URL, SO_FILENAME_libSeetaFaceRecognizer600)) {
-                needDownloadResUrlList.add(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libSeetaFaceRecognizer600);
+                needDownloadResUrls = TextUtils.isEmpty(needDownloadResUrls) ?
+                        new StringBuffer(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libSeetaFaceRecognizer600) :
+                        needDownloadResUrls.append(",").append(RESOURCE_SO_DOWNLOAD_BASE_URL).append(SO_FILENAME_libSeetaFaceRecognizer600);
             }
             if (isNeedDownload(RESOURCE_SO_DOWNLOAD_BASE_URL, SO_FILENAME_libSeetaFaceRecognizer600_java)) {
-                needDownloadResUrlList.add(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libSeetaFaceRecognizer600_java);
+                needDownloadResUrls = TextUtils.isEmpty(needDownloadResUrls) ?
+                        new StringBuffer(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libSeetaFaceRecognizer600_java) :
+                        needDownloadResUrls.append(",").append(RESOURCE_SO_DOWNLOAD_BASE_URL).append(SO_FILENAME_libSeetaFaceRecognizer600_java);
             }
             if (isNeedDownload(RESOURCE_SO_DOWNLOAD_BASE_URL, SO_FILENAME_libTenniS)) {
-                needDownloadResUrlList.add(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libTenniS);
+                needDownloadResUrls = TextUtils.isEmpty(needDownloadResUrls) ?
+                        new StringBuffer(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libTenniS) :
+                        needDownloadResUrls.append(",").append(RESOURCE_SO_DOWNLOAD_BASE_URL).append(SO_FILENAME_libTenniS);
             }
             if (isNeedDownload(RESOURCE_SO_DOWNLOAD_BASE_URL, SO_FILENAME_libopencv_java3)) {
-                needDownloadResUrlList.add(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libopencv_java3);
+                needDownloadResUrls = TextUtils.isEmpty(needDownloadResUrls) ?
+                        new StringBuffer(RESOURCE_SO_DOWNLOAD_BASE_URL + SO_FILENAME_libopencv_java3) :
+                        needDownloadResUrls.append(",").append(RESOURCE_SO_DOWNLOAD_BASE_URL).append(SO_FILENAME_libopencv_java3);
             }
+            Bundle bundle = new Bundle();
+            bundle.putString("needDownloadResUrls", TextUtils.isEmpty(needDownloadResUrls) ? "" : needDownloadResUrls.toString());
+            Message message = new Message();
+            message.setData(bundle);
+            message.what = CODE_GET_NEED_DOWNLOAD_RES_URL_LIST;
+            mHandler.sendMessage(message);
         });
         thread.start();
-        try {
-            thread.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        needDownloadResUrlListListener.onGetNeedDownloadResUrlList(needDownloadResUrlList);
     }
 
     /**
@@ -264,5 +297,28 @@ public class ResourceUtil {
         return true;
 
     }
+
+    private final static int CODE_GET_NEED_DOWNLOAD_RES_URL_LIST = 101;
+
+    private static WeakHandler mHandler = new WeakHandler(msg -> {
+        if (msg.what == CODE_GET_NEED_DOWNLOAD_RES_URL_LIST) {
+            if (ResourceUtil.needDownloadResUrlListListener != null) {
+                String needDownloadResUrls = msg.getData().getString("needDownloadResUrls");
+                if (TextUtils.isEmpty(needDownloadResUrls)) {
+                    ResourceUtil.needDownloadResUrlListListener.onGetNeedDownloadResUrlList(null);
+                    return true;
+                }
+                String[] urls = needDownloadResUrls.split(",");
+                if (urls.length == 0) {
+                    ResourceUtil.needDownloadResUrlListListener.onGetNeedDownloadResUrlList(null);
+                    return true;
+                }
+                List<String> urlList = new ArrayList<>();
+                Collections.addAll(urlList, urls);
+                ResourceUtil.needDownloadResUrlListListener.onGetNeedDownloadResUrlList(urlList);
+            }
+        }
+        return true;
+    });
 
 }

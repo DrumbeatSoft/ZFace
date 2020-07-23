@@ -25,7 +25,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
-        android:text="正在为您下载更新资源包"
+        android:text="正在为您下载资源包"
         android:textColor="#ffffff"
         android:textSize="14sp"
         app:layout_constraintBottom_toTopOf="@id/tvSpeed"
