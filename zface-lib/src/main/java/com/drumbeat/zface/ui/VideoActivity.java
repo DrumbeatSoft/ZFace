@@ -128,9 +128,7 @@ public class VideoActivity extends Activity {
         @Override
         public void onPreviewFrame(byte[] data, Camera camera) {
             if (!isDetecting) {
-                ZFace.with(VideoActivity.this)
-                        .recognizer()
-                        .recognize(data, RecognizeConfig.getInstance().getRecognizeListener());
+                ZFace.with(VideoActivity.this).recognizer().recognize(data);
                 isDetecting = true;
             }
         }

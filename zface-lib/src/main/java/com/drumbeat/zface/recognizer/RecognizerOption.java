@@ -28,11 +28,11 @@ public interface RecognizerOption {
 
     /**
      * 人脸检测</br>
-     * 从分离的图像信息数据中，检测出最大人脸，并通过回调返回人脸特征数据
+     * 用于相机预览页传入预览图像数据进行检测
      *
      * @param data 图像数据
      */
-    void recognize(@NonNull byte[] data, @NonNull RecognizeListener recognizeListener);
+    void recognize(@NonNull byte[] data);
 
     /**
      * 人脸特征比对，并通过回调返回比对相似度
@@ -46,5 +46,5 @@ public interface RecognizerOption {
     /**
      * 关闭人脸识别页面，关闭人脸识别器
      */
-    void close();
+//    void close();
 }

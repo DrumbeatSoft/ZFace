@@ -12,10 +12,8 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.drumbeat.zface.ZFace;
 import com.drumbeat.zface.config.CameraConfig;
 import com.drumbeat.zface.config.RecognizeConfig;
-import com.drumbeat.zface.config.ZFaceConfig;
 import com.drumbeat.zface.constant.CameraFacing;
 import com.drumbeat.zface.constant.ErrorCode;
-import com.drumbeat.zface.listener.Action;
 import com.drumbeat.zface.listener.CompareListener;
 import com.drumbeat.zface.listener.InitListener;
 import com.drumbeat.zface.listener.RecognizeListener;
@@ -46,7 +44,6 @@ import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 
 import static com.drumbeat.zface.resource.ResourceUtil.SO_FILENAME_libSeetaAuthorize;
 import static com.drumbeat.zface.resource.ResourceUtil.SO_FILENAME_libSeetaFaceAntiSpoofingX600;
@@ -75,6 +72,8 @@ public class Recognizer implements RecognizerOption {
 
     private HandlerThread mFaceTrackThread;
     private HandlerThread mFasThread;
+
+    private boolean returnedFeatures = false;
 
     {
         mFaceTrackThread = new HandlerThread("FaceTrackThread", Process.THREAD_PRIORITY_MORE_FAVORABLE);
@@ -228,6 +227,7 @@ public class Recognizer implements RecognizerOption {
 
     @Override
     public void recognize(@NonNull RecognizeListener recognizeListener) {
+        returnedFeatures = false;
         if (faceDetector == null || faceLandmarker == null || faceRecognizer == null || faceAntiSpoofing == null) {
             recognizeListener.onFailure(ErrorCode.ERROR_NO_INIT, null);
             return;
@@ -255,12 +255,15 @@ public class Recognizer implements RecognizerOption {
     }
 
     @Override
-    public void recognize(@NonNull byte[] data, @NonNull RecognizeListener recognizeListener) {
+    public void recognize(@NonNull byte[] data) {
+        RecognizeListener recognizeListener = RecognizeConfig.getInstance().getRecognizeListener();
+        if (recognizeListener == null) {
+            throw new UnsupportedOperationException("RecognizeListener must be nonnull.");
+        }
         if (faceDetector == null || faceLandmarker == null || faceRecognizer == null || faceAntiSpoofing == null) {
             recognizeListener.onFailure(ErrorCode.ERROR_NO_INIT, null);
             return;
         }
-        RecognizeConfig.getInstance().setRecognizeListener(recognizeListener);
         detect(data);
     }
 
@@ -273,8 +276,7 @@ public class Recognizer implements RecognizerOption {
         compareListener.onSuccess(faceRecognizer.CalculateSimilarity(feature1, feature2));
     }
 
-    @Override
-    public void close() {
+    private void close() {
         mFaceTrackThread.quitSafely();
         mFasThread.quitSafely();
         LocalBroadcastManager.getInstance(target.getContext()).sendBroadcast(new Intent("close_detactor"));
@@ -285,7 +287,7 @@ public class Recognizer implements RecognizerOption {
      *
      * @param data 视频帧数据
      */
-    public void detect(byte[] data) {
+    private void detect(byte[] data) {
         TrackingInfo trackingInfo = new TrackingInfo();
 
         matNv21.put(0, 0, data);
@@ -402,19 +404,17 @@ public class Recognizer implements RecognizerOption {
             //特征点检测
             SeetaPointF[] points = new SeetaPointF[5];
             faceLandmarker.mark(imageData, trackingInfo.faceInfo, points);
-            if (faceLandmarker == null) {
-                throw new UnsupportedOperationException("请初始化ZFace：ZFace.init()");
-            }
 
             //特征提取
             faceRecognizer.Extract(imageData, points, feats);
-            if (faceRecognizer == null) {
-                throw new UnsupportedOperationException("请初始化ZFace：ZFace.init()");
-            }
 
             RecognizeListener recognizeListener = RecognizeConfig.getInstance().getRecognizeListener();
             if (feats.length > 0 && recognizeListener != null) {
-                recognizeListener.onSuccess(feats);
+                if (!returnedFeatures) {
+                    returnedFeatures = true;
+                    recognizeListener.onSuccess(feats);
+                    close();
+                }
             }
         }
     }

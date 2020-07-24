@@ -84,16 +84,12 @@ public class MainActivity extends AppCompatActivity {
                             System.arraycopy(featureData, 0, featureDataRegister, 0, featureData.length);
                             showToastShort("人脸识别完成，已取得人脸特征数据");
                             Logger.i("人脸识别完成，已取得人脸特征数据");
-                            // 处理完成后，关闭检测器
-                            ZFace.with(MainActivity.this).recognizer().close();
                         }
                     }
 
                     @Override
                     public void onFailure(ErrorCode errorCode, String errorMsg) {
                         showToastShort("人脸识别失败，错误码：" + errorCode);
-                        // 处理完成后，关闭检测器
-                        ZFace.with(MainActivity.this).recognizer().close();
                     }
                 });
     }
@@ -110,8 +106,7 @@ public class MainActivity extends AppCompatActivity {
                                 public void onSuccess(float faceSimilar) {
                                     if (faceSimilar > 0.7) {
                                         showToastShort("比对成功");
-                                        // 处理完成后，关闭检测器
-                                        ZFace.with(MainActivity.this).recognizer().close();
+                                        Logger.i("比对成功");
                                     } else {
                                         showToastShort("比对失败，相似度：" + faceSimilar);
                                     }
@@ -124,8 +119,6 @@ public class MainActivity extends AppCompatActivity {
                             });
                         } else {
                             showToastShort("未检测到人脸特征数据");
-                            // 处理完成后，关闭检测器
-                            ZFace.with(MainActivity.this).recognizer().close();
                         }
                     }
 
