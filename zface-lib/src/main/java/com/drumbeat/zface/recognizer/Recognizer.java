@@ -2,7 +2,9 @@ package com.drumbeat.zface.recognizer;
 
 import android.content.Intent;
 import android.hardware.Camera;
+import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Message;
 import android.os.Process;
 import android.text.TextUtils;
 
@@ -25,6 +27,7 @@ import com.drumbeat.zface.util.CameraUtils;
 import com.drumbeat.zface.util.FileUtils;
 import com.drumbeat.zface.util.Logger;
 import com.drumbeat.zface.util.SizeUtils;
+import com.drumbeat.zface.util.WeakHandler;
 import com.seeta.sdk.FaceAntiSpoofing;
 import com.seeta.sdk.FaceDetector;
 import com.seeta.sdk.FaceLandmarker;
@@ -44,6 +47,7 @@ import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.drumbeat.zface.resource.ResourceUtil.SO_FILENAME_libSeetaAuthorize;
 import static com.drumbeat.zface.resource.ResourceUtil.SO_FILENAME_libSeetaFaceAntiSpoofingX600;
@@ -255,6 +259,19 @@ public class Recognizer implements RecognizerOption {
     }
 
     @Override
+    public void recognize(@NonNull byte[] data, @NonNull RecognizeListener recognizeListener) {
+        if (recognizeListener == null) {
+            throw new UnsupportedOperationException("RecognizeListener must be nonnull.");
+        }
+        if (faceDetector == null || faceLandmarker == null || faceRecognizer == null || faceAntiSpoofing == null) {
+            recognizeListener.onFailure(ErrorCode.ERROR_NO_INIT, null);
+            return;
+        }
+        RecognizeConfig.getInstance().setRecognizeListener(recognizeListener);
+        detect(data);
+    }
+
+    @Override
     public void recognize(@NonNull byte[] data) {
         RecognizeListener recognizeListener = RecognizeConfig.getInstance().getRecognizeListener();
         if (recognizeListener == null) {
@@ -282,13 +299,15 @@ public class Recognizer implements RecognizerOption {
         LocalBroadcastManager.getInstance(target.getContext()).sendBroadcast(new Intent("close_detactor"));
     }
 
+    private TrackingInfo trackingInfo;
+
     /**
      * 人脸检测
      *
      * @param data 视频帧数据
      */
     private void detect(byte[] data) {
-        TrackingInfo trackingInfo = new TrackingInfo();
+        trackingInfo = new TrackingInfo();
 
         matNv21.put(0, 0, data);
         trackingInfo.matBgr = new Mat(CameraConfig.getInstance().getCameraPreviewHeight(), CameraConfig.getInstance().getCameraPreviewWidth(), CvType.CV_8UC3);
@@ -302,15 +321,13 @@ public class Recognizer implements RecognizerOption {
 
         Imgproc.cvtColor(trackingInfo.matBgr, trackingInfo.matGray, Imgproc.COLOR_BGR2GRAY);
 
-        trackingFace(trackingInfo);
+        trackingFace();
     }
 
     /**
      * 追踪人脸
-     *
-     * @param trackingInfo
      */
-    private void trackingFace(TrackingInfo trackingInfo) {
+    private void trackingFace() {
 
         trackingInfo.matBgr.get(0, 0, imageData.data);
         SeetaRect[] faces = faceDetector.Detect(imageData);
@@ -338,7 +355,7 @@ public class Recognizer implements RecognizerOption {
             trackingInfo.faceRect.width = faces[maxIndex].width;
             trackingInfo.faceRect.height = faces[maxIndex].height;
 
-            livenessDetect(trackingInfo);
+            livenessDetect();
         }
     }
 
@@ -346,11 +363,14 @@ public class Recognizer implements RecognizerOption {
     static int frameNumThreshold = 5;
 
     /**
-     * 活体检测
-     *
-     * @param trackingInfo
+     * 正在提取人脸特征信息
      */
-    private void livenessDetect(TrackingInfo trackingInfo) {
+    private AtomicBoolean isExtractingFaceFeature = new AtomicBoolean(false);
+
+    /**
+     * 活体检测
+     */
+    private void livenessDetect() {
         trackingInfo.matGray = new Mat();
         trackingInfo.matBgr.get(0, 0, imageData.data);
         //存在人脸
@@ -364,25 +384,12 @@ public class Recognizer implements RecognizerOption {
                 faceLandmarker.mark(imageData, trackingInfo.faceInfo, points);
                 SeetaRect faceInfo = trackingInfo.faceInfo;
 
-                state = faceAntiSpoofing.Predict(imageData, faceInfo, points);
-
-                RecognizeListener recognizeListener = RecognizeConfig.getInstance().getRecognizeListener();
-                if (recognizeListener != null) {
-                    switch (state) {
-                        case SPOOF:
-                            recognizeListener.onFailure(ErrorCode.ERROR_SPOOF, null);
-                            break;
-                        case FUZZY:
-                            recognizeListener.onFailure(ErrorCode.ERROR_FUZZY, null);
-                            break;
-                        case REAL:
-                            extractFaceFeature(trackingInfo);
-                            break;
-                        default:
-                            recognizeListener.onFailure(ErrorCode.ERROR_NO_FACE, null);
-                            break;
-                    }
-
+                if (!isExtractingFaceFeature.get()) {
+                    isExtractingFaceFeature.set(true);
+                    new Thread(() -> {
+                        state = faceAntiSpoofing.Predict(imageData, faceInfo, points);
+                        mHandler.sendEmptyMessage(CODE_LIVING_DETECT);
+                    }).start();
                 }
             }
         }
@@ -390,10 +397,8 @@ public class Recognizer implements RecognizerOption {
 
     /**
      * 提取人脸特征数据
-     *
-     * @param trackingInfo
      */
-    private void extractFaceFeature(TrackingInfo trackingInfo) {
+    private void extractFaceFeature() {
         trackingInfo.matGray = new Mat();
         trackingInfo.matBgr.get(0, 0, imageData.data);
 
@@ -417,6 +422,7 @@ public class Recognizer implements RecognizerOption {
                 }
             }
         }
+        isExtractingFaceFeature.set(false);
     }
 
     /**
@@ -435,5 +441,34 @@ public class Recognizer implements RecognizerOption {
         // 拷贝
         return FileUtils.copyFile(srcPath, destPath, () -> true);
     }
+
+    private static final int CODE_LIVING_DETECT = 101;
+
+    private WeakHandler mHandler = new WeakHandler(new Handler.Callback() {
+        @Override
+        public boolean handleMessage(Message msg) {
+            if (msg.what == CODE_LIVING_DETECT) {
+                RecognizeListener recognizeListener = RecognizeConfig.getInstance().getRecognizeListener();
+                if (recognizeListener != null) {
+                    switch (state) {
+                        case SPOOF:
+                            recognizeListener.onFailure(ErrorCode.ERROR_SPOOF, null);
+                            break;
+                        case FUZZY:
+                            recognizeListener.onFailure(ErrorCode.ERROR_FUZZY, null);
+                            break;
+                        case REAL:
+                            extractFaceFeature();
+                            break;
+                        default:
+                            recognizeListener.onFailure(ErrorCode.ERROR_NO_FACE, null);
+                            break;
+                    }
+                }
+                return true;
+            }
+            return false;
+        }
+    });
 
 }

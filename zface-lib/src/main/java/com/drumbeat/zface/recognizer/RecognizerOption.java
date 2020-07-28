@@ -30,6 +30,15 @@ public interface RecognizerOption {
      * 人脸检测</br>
      * 用于相机预览页传入预览图像数据进行检测
      *
+     * @param data              图像数据
+     * @param recognizeListener 检测监听
+     */
+    void recognize(@NonNull byte[] data, @NonNull RecognizeListener recognizeListener);
+
+    /**
+     * 人脸检测</br>
+     * 用于相机预览页传入预览图像数据进行检测
+     *
      * @param data 图像数据
      */
     void recognize(@NonNull byte[] data);
