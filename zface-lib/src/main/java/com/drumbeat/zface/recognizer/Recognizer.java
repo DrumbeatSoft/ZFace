@@ -453,15 +453,18 @@ public class Recognizer implements RecognizerOption {
                     switch (state) {
                         case SPOOF:
                             recognizeListener.onFailure(ErrorCode.ERROR_SPOOF, null);
+                            isExtractingFaceFeature.set(false);
                             break;
                         case FUZZY:
                             recognizeListener.onFailure(ErrorCode.ERROR_FUZZY, null);
+                            isExtractingFaceFeature.set(false);
                             break;
                         case REAL:
                             extractFaceFeature();
                             break;
                         default:
                             recognizeListener.onFailure(ErrorCode.ERROR_NO_FACE, null);
+                            isExtractingFaceFeature.set(false);
                             break;
                     }
                 }
