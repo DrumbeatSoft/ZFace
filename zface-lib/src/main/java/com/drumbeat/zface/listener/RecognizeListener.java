@@ -14,7 +14,7 @@ public interface RecognizeListener {
      *
      * @param featureData 人脸特征数据
      */
-    void onSuccess(float[] featureData);
+    void onSuccess(float[] featureData,byte[] faceData);
 
     void onFailure(ErrorCode errorCode, String errorMsg);
 }

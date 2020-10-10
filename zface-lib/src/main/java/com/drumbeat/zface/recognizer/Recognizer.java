@@ -77,6 +77,8 @@ public class Recognizer implements RecognizerOption {
     private HandlerThread mFaceTrackThread;
     private HandlerThread mFasThread;
 
+    private byte[] originalFaceData = null;
+
     private boolean returnedFeatures = false;
 
     {
@@ -307,6 +309,8 @@ public class Recognizer implements RecognizerOption {
      * @param data 视频帧数据
      */
     private void detect(byte[] data) {
+        originalFaceData = data;
+
         trackingInfo = new TrackingInfo();
 
         matNv21.put(0, 0, data);
@@ -417,7 +421,7 @@ public class Recognizer implements RecognizerOption {
             if (feats.length > 0 && recognizeListener != null) {
                 if (!returnedFeatures) {
                     returnedFeatures = true;
-                    recognizeListener.onSuccess(feats);
+                    recognizeListener.onSuccess(feats, originalFaceData);
                     close();
                 }
             }
